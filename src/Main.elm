@@ -65,7 +65,7 @@ port messageReceiver : (String -> msg) -> Sub msg
 
 tryConnectToChannel : String -> Cmd msg
 tryConnectToChannel channel =
-    tryConnect ("ws://participate-server.herokuapp.com/channel/" ++ channel)
+    tryConnect ("wss://participate-server.onrender.com/channel/" ++ channel)
 
 
 
