@@ -1,0 +1,102 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Elm + WebSuckets</title>
+  <script type="text/javascript" src="/elm.js"></script>
+</head>
+
+<body>
+  <div id="myapp"></div>
+</body>
+
+<script type="text/javascript">
+
+  // Everything is a function, so that we can fail early
+  function f() {
+    // Start the Elm application.
+    var app = Elm.Main.init({
+      node: document.getElementById('myapp')
+    });
+
+    // Validate location part of url, should end in /channel/{name_of_channel}
+    /*
+    var pathname = window.location.pathname;
+    var paths = pathname.split("/");
+    if (paths.length != 3 || paths[0] != "client" || paths[1] != "channel" || paths[2] == "") {
+      console.log("Not a valid URL");
+      return;
+    }
+    */
+    var channel_name = "fis";//paths[2];
+
+    var socket;
+
+    /*
+     Subscribe to events received from ELM
+     */
+
+    // When a command goes to the `sendMessage` port, we pass the message
+    // along to the WebSocket.
+    app.ports.sendMessage.subscribe(function (message) {
+      console.log("Sending a message");
+      if (!socket) {
+        console.log("Socket not created yet, not sending a message");
+        app.ports.connectionFailure.send("Socket not created yet");
+      } else if (socket.readyState === 1) {
+        console.log("Socket is ready, sending");
+        socket.send(message);
+      } else {
+        console.log("Socket not ready, not sending");
+        app.ports.connectionFailure.send("Sending failure");
+      }
+    });
+
+    app.ports.tryConnect.subscribe(function (url) {
+      console.log("trying to connect to ", url);
+
+      // Create your WebSocket.
+      socket = new WebSocket(url);
+
+      /*
+       Forward events from the socket to ELM
+       */
+
+      // Websocket successfully connected
+      socket.onopen = function (e) {
+        console.log("Websocket successfully open: ", e)
+        app.ports.connectionEstablished.send("");
+      };
+
+      // Message received from websocket
+      socket.onmessage = function (event) {
+        console.log("Got websocket message: ", event.data);
+        app.ports.messageReceiver.send(event.data);
+      };
+
+      socket.onclose = function (event) {
+        if (event.wasClean) {
+          console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+        } else {
+          // e.g. server process killed or network down
+          // event.code is usually 1006 in this case
+          console.log('[close] Connection died');
+        }
+        app.ports.connectionClosed.send("connection closed");
+      };
+
+      socket.onerror = function (error) {
+        console.log(`[error] ${error.message}`);
+        app.ports.connectionFailure.send("socket error");
+      };
+
+
+    });
+
+  }
+  f();
+
+</script>
+
+</html>
